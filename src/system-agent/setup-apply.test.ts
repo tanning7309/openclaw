@@ -1032,6 +1032,25 @@ describe("applySystemAgentSetup transaction boundaries", () => {
     expect(mocks.waitForGatewayReachable).not.toHaveBeenCalled();
   });
 
+  it("reports external supervision instead of the generic service skip", async () => {
+    mocks.ensureGatewayService.mockResolvedValueOnce({
+      gateway: { status: "skipped", reason: "external" },
+      containerWithoutUserSystemd: false,
+    });
+
+    const result = await applySystemAgentSetup(baseParams({ surface: "cli" }));
+
+    expect(result.gateway).toEqual({ status: "skipped", reason: "external" });
+    expect(result.lines).toContain(
+      "Gateway: OpenClaw gateway lifecycle is managed by an external supervisor " +
+        "(OPENCLAW_SUPERVISOR_MODE=external). Use that supervisor to start the gateway.",
+    );
+    expect(result.lines).not.toContain(
+      "Gateway: service install skipped — say `start gateway` when you want it running.",
+    );
+    expect(mocks.waitForGatewayReachable).not.toHaveBeenCalled();
+  });
+
   it("keeps setup incomplete when the installed gateway never becomes reachable", async () => {
     mocks.ensureGatewayService.mockResolvedValueOnce({
       gateway: { status: "ready", action: "installed" },
